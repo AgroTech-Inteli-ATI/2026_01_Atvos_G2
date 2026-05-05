@@ -2,17 +2,14 @@
 
 ## Configuração do ambiente
 
-1. Instale as dependências Python:
+1. Configure o ambiente:
    ```bash
-   pip install -r requirements.txt
+   make setup
    ```
 
-2. Copie o arquivo de exemplo e preencha com suas credenciais:
+2. Copie o arquivo de variáveis de ambiente e preencha com suas credenciais:
    ```bash
    cp .env.example .env
    ```
 
-3. Teste a conexão com GCP:
-   ```bash
-   python src/ingestion/test_connection.py
-   ```
+3. Coloque os arquivos CSV na pasta `data/`.
