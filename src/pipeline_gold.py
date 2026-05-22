@@ -90,13 +90,14 @@ def rodar_gold(df_silver: pd.DataFrame) -> pd.DataFrame:
             })
         else:
             for processo, resultado in chamadas:
-                resultados.append({
-                    **base,
-                    "processo":        processo,
-                    "orientacao":      resultado["orientacao"],
-                    "valor_calculado": resultado.get("valor_calculado"),
-                    "regra_acionada":  resultado["regra_acionada"],
-                })
+                if resultado["regra_acionada"] not in _REGRAS_SEM_ACAO:
+                    resultados.append({
+                        **base,
+                        "processo":        processo,
+                        "orientacao":      resultado["orientacao"],
+                        "valor_calculado": resultado.get("valor_calculado"),
+                        "regra_acionada":  resultado["regra_acionada"],
+                    })
 
     df_gold = pd.DataFrame(resultados)
 

@@ -1,3 +1,6 @@
+from .utils import campo_invalido
+
+
 def calcular_necessidade_calagem(talhao: dict) -> dict:
     """
     Calcula a necessidade de calagem para o talhão com base na saturação
@@ -29,10 +32,16 @@ def calcular_necessidade_calagem(talhao: dict) -> dict:
         ``regra_acionada`` (str)
             Identificador da condição disparada. Valores possíveis:
 
-            - ``"calagem_incorporada"`` — cana planta, V% abaixo do alvo
-            - ``"calagem_superficial"`` — cana soca, V% abaixo do alvo
+            - ``"calagem_incorporada_dolomitico"`` — cana planta, V% baixo, Mg deficiente
+            - ``"calagem_incorporada_calcitico"`` — cana planta, V% baixo, Mg adequado
+            - ``"calagem_superficial_dolomitico"`` — cana soca, V% baixo, Mg deficiente
+            - ``"calagem_superficial_calcitico"`` — cana soca, V% baixo, Mg adequado
             - ``"sem_necessidade_calagem"`` — V% já adequado (≥ 60%)
-            - ``"sem_dado_solo"`` — V1 ausente no registro
+            - ``"dado_ausente_V1"`` / ``"dado_ausente_CTC1"`` / ``"dado_ausente_mg1"`` — campo nulo ou NaN
+
+        ``detalhes`` (dict)
+            Campos granulares: dose, tipo de calcário, tipo de aplicação,
+            momento, V% atual e alvo.
 
     Notes
     -----
@@ -54,59 +63,87 @@ def calcular_necessidade_calagem(talhao: dict) -> dict:
     ... }
     >>> calcular_necessidade_calagem(talhao)
     {
-        "orientacao": "incorporada | dolomítico | 60 a 90 dias antes do plantio — antes da aração",
+        "orientacao": "Aplicar 1.62 t/ha de calcário dolomítico (incorporada). ...",
         "valor_calculado": 1.62,
-        "regra_acionada": "calagem_incorporada"
+        "regra_acionada": "calagem_incorporada_dolomitico",
+        "detalhes": {...}
     }
     """
 
-    V_ALVO       = 60
-    PRNT_PADRAO  = 100
-    DOSE_MAXIMA  = 4.0
-    MG_LIMIAR    = 5.0
+    V_ALVO      = 60.0
+    PRNT_PADRAO = 100.0
+    DOSE_MAXIMA = 4.0
+    MG_LIMIAR   = 5.0
 
-    # Sem dados de solo
-    if talhao.get("V1") is None:
-        return {
-            "orientacao":      "sem dados de solo — calagem indeterminada",
-            "valor_calculado": None,
-            "regra_acionada":  "sem_dado_solo"
-        }
+    # 1. Validar campos obrigatórios (None e NaN)
+    for campo in ("V1", "CTC1", "mg1"):
+        if campo_invalido(talhao.get(campo)):
+            return {
+                "orientacao":      f"Dado ausente ou inválido: {campo}.",
+                "valor_calculado": None,
+                "regra_acionada":  f"dado_ausente_{campo}",
+                "detalhes":        {"id_talhao": talhao.get("id_talhao"), "campo_ausente": campo},
+            }
 
-    V_atual     = float(talhao["V1"])
-    CTC         = float(talhao["CTC1"])
+    # 2. Extrair valores
+    v_atual     = float(talhao["V1"])
+    ctc         = float(talhao["CTC1"])
     mg_trocavel = float(talhao["mg1"])
+    categoria   = talhao.get("categoria", "")
+    id_talhao   = talhao.get("id_talhao", "desconhecido")
 
-    if V_atual < V_ALVO:
+    # 3. Lógica principal
+    if v_atual < V_ALVO:
 
-        NC = CTC * (V_ALVO - V_atual) / (PRNT_PADRAO * 10)
-        NC = min(NC, DOSE_MAXIMA)
+        nc = ctc * (V_ALVO - v_atual) / (PRNT_PADRAO * 10)
+        nc = min(nc, DOSE_MAXIMA)
 
         if mg_trocavel < MG_LIMIAR:
             tipo_calcario = "dolomítico"
-            NC = max(NC, 1.0)
+            nc = max(nc, 1.0)
+            sufixo_regra = "dolomitico"
         else:
             tipo_calcario = "calcítico ou dolomítico"
+            sufixo_regra = "calcitico"
 
-        if talhao.get("categoria") == "Formação":
+        if categoria == "Formação":
             tipo_aplicacao = "incorporada"
             momento        = "60 a 90 dias antes do plantio — antes da aração"
-            regra          = "calagem_incorporada"
+            regra          = f"calagem_incorporada_{sufixo_regra}"
         else:
-            NC             = NC * 0.5
+            nc             = nc * 0.5
             tipo_aplicacao = "superficial"
             momento        = "início do período chuvoso"
-            regra          = "calagem_superficial"
+            regra          = f"calagem_superficial_{sufixo_regra}"
+
+        orientacao = (
+            f"Aplicar {nc:.2f} t/ha de calcário {tipo_calcario} ({tipo_aplicacao}). "
+            f"Momento: {momento}."
+        )
 
     else:
-        NC             = 0
+        nc             = 0.0
         tipo_calcario  = "nenhum"
         tipo_aplicacao = "nenhuma"
         momento        = "não aplicável — V% já adequado"
         regra          = "sem_necessidade_calagem"
+        orientacao     = (
+            f"V% atual ({v_atual}%) já atingiu o alvo ({V_ALVO}%). "
+            f"Calagem não necessária."
+        )
 
+    # 4. Retorno padronizado
     return {
-        "orientacao":      f"{tipo_aplicacao} | {tipo_calcario} | {momento}",
-        "valor_calculado": round(NC, 2),
-        "regra_acionada":  regra
+        "orientacao":      orientacao,
+        "valor_calculado": round(nc, 4),
+        "regra_acionada":  regra,
+        "detalhes": {
+            "id_talhao":        id_talhao,
+            "dose_calcario_tha": round(nc, 4),
+            "tipo_calcario":    tipo_calcario,
+            "tipo_aplicacao":   tipo_aplicacao,
+            "momento":          momento,
+            "V_atual_perc":     v_atual,
+            "V_alvo_perc":      V_ALVO,
+        },
     }
