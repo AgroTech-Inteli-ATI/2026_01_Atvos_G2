@@ -1,0 +1,5 @@
+from .calagem import calcular_necessidade_calagem
+from .gessagem import calcular_necessidade_gessagem
+from .fosfatagem import calcular_necessidade_fosfatagem
+from .erradicacao import calcular_erradicacao
+from .janela_plantio import calcular_janela_plantio
