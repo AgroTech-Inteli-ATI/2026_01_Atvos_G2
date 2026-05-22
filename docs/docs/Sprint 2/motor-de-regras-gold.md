@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # Motor de Regras Agronômicas — Camada Gold
 
-**Versão:** 1.0  
+**Versão:** 2.0  
 **Última atualização:** 2026-05-22  
 **Responsável:** Atvos G2  
 **Relacionado à:** Task 2.5 — Mapa Lógico de Regras
@@ -17,7 +17,7 @@ sidebar_position: 3
 
 ## Visão Geral — Pipeline Gold
 
-Para cada talhão do inventário Silver, o pipeline executa os 5 módulos abaixo em sequência e consolida as orientações em um único arquivo Gold.
+Para cada talhão do inventário Silver, o pipeline executa os 4 módulos corretivos em sequência. A Janela de Plantio é calculada separadamente e adicionada como colunas ao resultado final.
 
 ```mermaid
 flowchart LR
@@ -27,9 +27,32 @@ flowchart LR
     B --> E[Fosfatagem]
     B --> F[Erradicação]
     B --> G[Janela de Plantio]
-    C & D & E & F & G --> H[Consolidar resultados]
-    H --> I([orientacoes_YYYY-MM-DD\n.parquet + .csv])
+    C & D & E & F --> H{Algum processo\nnecessário?}
+    H -- Sim --> I[Manter apenas linhas\ncom ação necessária]
+    H -- Não --> J[1 linha: nenhum processo]
+    G --> K[Colunas janela_orientacao\ne janela_regra]
+    I & J & K --> L([orientacoes_YYYY-MM-DD\n.parquet + .csv])
 ```
+
+---
+
+## Schema do Output
+
+O arquivo gerado está em **formato longo**: cada talhão gera entre 1 e 4 linhas, uma por processo com ação necessária.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `id_talhao` | string | Identificador único do talhão |
+| `unidade` | string | Código da unidade industrial |
+| `janela_orientacao` | string | Texto da janela de plantio recomendada |
+| `janela_regra` | string | Identificador da regra de janela disparada |
+| `data_geracao` | string | Data de geração no formato `YYYY-MM-DD` |
+| `processo` | string | `calagem`, `gessagem`, `fosfatagem`, `erradicacao` ou `nenhum processo` |
+| `orientacao` | string | Texto da recomendação agronômica |
+| `valor_calculado` | float / null | Dose numérica (t/ha ou kg/ha) — apenas calagem e gessagem |
+| `regra_acionada` | string | Identificador da regra disparada |
+
+> Linhas com resultado `sem_necessidade_*` ou `nao_aplicavel_*` são suprimidas quando outros processos do mesmo talhão exigem ação. Talhões onde nenhum processo é necessário geram uma única linha com `processo = "nenhum processo"` e `regra_acionada = "sem_necessidade_todos"`.
 
 ---
 
@@ -42,9 +65,9 @@ flowchart LR
 ```mermaid
 flowchart TD
 
-    A([Talhão recebido]) --> B{V1 é nulo?\nDados de solo ausentes}
+    A([Talhão recebido]) --> B{V1, CTC1 ou mg1\nsão nulos ou NaN?}
 
-    B -- Sim --> Z1([orientacao: sem dados de solo\nregra: sem_dado_solo])
+    B -- Sim --> Z1([orientacao: dado ausente ou inválido\nregra: dado_ausente_V1\nou dado_ausente_CTC1\nou dado_ausente_mg1])
 
     B -- Não --> C[Extrair V1, CTC1, mg1\nda análise de solo]
 
@@ -62,9 +85,9 @@ flowchart TD
 
     G & H --> I{Categoria\ndo talhão?}
 
-    I -- Formação\ncana planta --> J([Aplicação INCORPORADA\n60 a 90 dias antes do plantio\nregra: calagem_incorporada])
+    I -- Formação\ncana planta --> J([Aplicação INCORPORADA\n60 a 90 dias antes do plantio\nregra: calagem_incorporada_dolomitico\nou calagem_incorporada_calcitico])
 
-    I -- Cana Soca\nou outro --> K([NC = NC × 0,5\nAplicação SUPERFICIAL\ninício do período chuvoso\nregra: calagem_superficial])
+    I -- Cana Soca\nou outro --> K([NC = NC × 0,5\nAplicação SUPERFICIAL\ninício do período chuvoso\nregra: calagem_superficial_dolomitico\nou calagem_superficial_calcitico])
 ```
 
 ---
@@ -82,9 +105,9 @@ flowchart TD
 
     B -- Não --> Z1([Gessagem aplicável\napenas na cana planta\nregra: nao_aplicavel_categoria])
 
-    B -- Sim --> C{ca2 é nulo?\nDados de solo ausentes}
+    B -- Sim --> C{ca2, al2 ou sb2\nsão nulos ou NaN?}
 
-    C -- Sim --> Z2([orientacao: sem dados de solo\nregra: sem_dado_solo])
+    C -- Sim --> Z2([orientacao: dado ausente ou inválido\nregra: dado_ausente_ca2\nou dado_ausente_al2\nou dado_ausente_sb2])
 
     C -- Não --> D[Extrair ca2, al2, sb2\ncamada 25 a 50 cm]
 
@@ -94,15 +117,21 @@ flowchart TD
 
     F -- Não --> Z3([Gesso não necessário\nCa e Al dentro dos limites\nregra: sem_necessidade_gessagem])
 
-    F -- Sim --> G{tipo_solo\nidentificado?}
+    F -- Sim --> G{Qual o gatilho?}
 
-    G -- Muito Argiloso --> H1[argila = 550 g/kg\ndose = 2750 kg/ha]
-    G -- Argiloso --> H2[argila = 420 g/kg\ndose = 2100 kg/ha]
-    G -- Médio --> H3[argila = 250 g/kg\ndose = 1250 kg/ha]
-    G -- Arenoso --> H4[argila = 150 g/kg\ndose = 750 kg/ha]
-    G -- A Definir --> H5[argila = 300 g/kg\ndose = 1500 kg/ha]
+    G -- ca2 baixo\nE sat_al alto --> H1([regra: gessagem_ca_baixo_e_al_alto])
+    G -- apenas ca2\nbaixo --> H2([regra: gessagem_ca_subsuperficial_baixo])
+    G -- apenas sat_al\nalto --> H3([regra: gessagem_saturacao_al_alta])
 
-    H1 & H2 & H3 & H4 & H5 --> I([Aplicar dose calculada\nna grade niveladora\nantes do plantio\nregra: gessagem_necessaria])
+    H1 & H2 & H3 --> I{tipo_solo\nidentificado?}
+
+    I -- Muito Argiloso --> J1[argila = 550 g/kg\ndose = 2750 kg/ha]
+    I -- Argiloso --> J2[argila = 420 g/kg\ndose = 2100 kg/ha]
+    I -- Médio --> J3[argila = 250 g/kg\ndose = 1250 kg/ha]
+    I -- Arenoso --> J4[argila = 150 g/kg\ndose = 750 kg/ha]
+    I -- A Definir --> J5[argila = 300 g/kg\ndose = 1500 kg/ha]
+
+    J1 & J2 & J3 & J4 & J5 --> K([Aplicar dose calculada\nna grade niveladora\nantes do plantio])
 ```
 
 ---
@@ -118,9 +147,9 @@ flowchart TD
 
     B -- Não --> Z1([Fosfatagem aplicável\napenas na cana planta\nregra: nao_aplicavel_categoria])
 
-    B -- Sim --> C{p1 é nulo?\nDados de solo ausentes}
+    B -- Sim --> C{p1 é nulo ou NaN?\nDados de solo ausentes}
 
-    C -- Sim --> Z2([orientacao: sem dados de solo\nregra: sem_dado_solo])
+    C -- Sim --> Z2([orientacao: dado ausente ou inválido\nregra: dado_ausente_p1])
 
     C -- Não --> D[Extrair p1\nfósforo disponível\ncamada 0 a 25 cm]
 
@@ -154,9 +183,9 @@ flowchart TD
 
     B -- Sim --> Z1([Erradicação não aplicável\na talhões em formação\nregra: nao_aplicavel_formacao])
 
-    B -- Não --> C{tch_prod ou no_corte\nestão ausentes?}
+    B -- Não --> C{tch_prod ou no_corte\nsão nulos ou NaN?}
 
-    C -- Sim --> Z2([Dados insuficientes\nErradicação indeterminada\nregra: sem_dado])
+    C -- Sim --> Z2([orientacao: dado ausente ou inválido\nregra: dado_ausente_tch_prod\nou dado_ausente_no_corte])
 
     C -- Não --> D{no_corte\nmaior ou igual a 8?}
 
@@ -185,9 +214,11 @@ flowchart TD
 
 ---
 
-## Processo 5 — Janela de Plantio
+## Processo 5 — Janela de Plantio *(coluna, não linha)*
 
 **Objetivo:** sugerir o período ideal de plantio (ou replantio em reforma) com base no perfil de maturação da variedade (MAN_HIPOT), visando sincronizar a colheita com os períodos de maior eficiência industrial.
+
+> ⚠️ Este processo **não gera linhas** no output. Seu resultado é adicionado como duas colunas (`janela_orientacao` e `janela_regra`) em todas as linhas do talhão, sejam elas de processos corretivos ou `nenhum processo`.
 
 > ⚠️ **Pendente de validação com PO ATVOS:** os meses sugeridos são baseados no calendário sucroalcooleiro do Centro-Sul do Brasil. Unidades em outras regiões podem ter janelas distintas.
 
@@ -213,7 +244,7 @@ flowchart TD
 
     I -- Sim --> J([Estimar faixa de colheita\na partir da DATA_PLANTIO\nconfirmar calendário com equipe\nregra: janela_precoce / media / tardia])
 
-    I -- Não --> K([Orientação para reforma futura\nPlantar no período indicado\nquando reform for executada\nregra: janela_soca_reforma])
+    I -- Não --> K([Orientação para reforma futura\nPlantar no período indicado\nquando reforma for executada\nregra: janela_soca_reforma])
 ```
 
 **Tabela-resumo das janelas por perfil:**
@@ -231,27 +262,36 @@ flowchart TD
 
 | Processo | Regra disparada | Condição | Valor calculado |
 |---|---|---|---|
-| Calagem | `sem_dado_solo` | V1 nulo | — |
-| Calagem | `calagem_incorporada` | V% < 60 e cana planta | NC em t/ha |
-| Calagem | `calagem_superficial` | V% < 60 e cana soca | NC × 0,5 em t/ha |
+| Calagem | `dado_ausente_V1` | V1 nulo ou NaN | — |
+| Calagem | `dado_ausente_CTC1` | CTC1 nulo ou NaN | — |
+| Calagem | `dado_ausente_mg1` | mg1 nulo ou NaN | — |
+| Calagem | `calagem_incorporada_dolomitico` | V% < 60, cana planta, mg < 5 | NC em t/ha |
+| Calagem | `calagem_incorporada_calcitico` | V% < 60, cana planta, mg ≥ 5 | NC em t/ha |
+| Calagem | `calagem_superficial_dolomitico` | V% < 60, cana soca, mg < 5 | NC × 0,5 em t/ha |
+| Calagem | `calagem_superficial_calcitico` | V% < 60, cana soca, mg ≥ 5 | NC × 0,5 em t/ha |
 | Calagem | `sem_necessidade_calagem` | V% ≥ 60 | 0 t/ha |
 | Gessagem | `nao_aplicavel_categoria` | Não é Formação | — |
-| Gessagem | `sem_dado_solo` | ca2 nulo | — |
-| Gessagem | `gessagem_necessaria` | Ca < 4 ou sat Al > 40% | Dose em kg/ha |
-| Gessagem | `sem_necessidade_gessagem` | Parâmetros adequados | 0 kg/ha |
+| Gessagem | `dado_ausente_ca2` | ca2 nulo ou NaN | — |
+| Gessagem | `dado_ausente_al2` | al2 nulo ou NaN | — |
+| Gessagem | `dado_ausente_sb2` | sb2 nulo ou NaN | — |
+| Gessagem | `gessagem_ca_baixo_e_al_alto` | Ca < 4 **e** sat Al > 40% | Dose em kg/ha |
+| Gessagem | `gessagem_ca_subsuperficial_baixo` | apenas Ca < 4 | Dose em kg/ha |
+| Gessagem | `gessagem_saturacao_al_alta` | apenas sat Al > 40% | Dose em kg/ha |
+| Gessagem | `sem_necessidade_gessagem` | Ca e Al adequados | 0 kg/ha |
 | Fosfatagem | `nao_aplicavel_categoria` | Não é Formação | — |
-| Fosfatagem | `sem_dado_solo` | p1 nulo | — |
+| Fosfatagem | `dado_ausente_p1` | p1 nulo ou NaN | — |
 | Fosfatagem | `fosfatagem_muito_baixo` | P < 6 mg/dm³ | 120 kg P₂O₅/ha |
 | Fosfatagem | `fosfatagem_baixo` | 6 ≤ P < 12 mg/dm³ | 80 kg P₂O₅/ha |
 | Fosfatagem | `fosfatagem_medio` | 12 ≤ P < 25 mg/dm³ | 40 kg P₂O₅/ha |
 | Fosfatagem | `sem_necessidade_fosfatagem` | P ≥ 25 mg/dm³ | 0 kg P₂O₅/ha |
 | Erradicação | `nao_aplicavel_formacao` | Categoria = Formação | — |
-| Erradicação | `sem_dado` | tch_prod ou no_corte nulos | — |
-| Erradicação | `reforma_longevidade_maxima` | no_corte ≥ 8 | — |
-| Erradicação | `reforma_tch_baixo_maduro` | TCH < 55 e corte ≥ 3 | — |
-| Erradicação | `reforma_tch_baixo_jovem` | TCH < 55 e corte < 3 | — |
-| Erradicação | `reforma_preventiva` | TCH ≥ 55 e corte ≥ 6 | — |
-| Erradicação | `sem_necessidade_reforma` | Dentro dos critérios | — |
+| Erradicação | `dado_ausente_tch_prod` | tch_prod nulo ou NaN | — |
+| Erradicação | `dado_ausente_no_corte` | no_corte nulo ou NaN | — |
+| Erradicação | `reforma_longevidade_maxima` | no_corte ≥ 8 | TCH atual |
+| Erradicação | `reforma_tch_baixo_maduro` | TCH < 55 e corte ≥ 3 | TCH atual |
+| Erradicação | `reforma_tch_baixo_jovem` | TCH < 55 e corte < 3 | TCH atual |
+| Erradicação | `reforma_preventiva` | TCH ≥ 55 e corte ≥ 6 | TCH atual |
+| Erradicação | `sem_necessidade_reforma` | Dentro dos critérios | TCH atual |
 | Janela plantio | `janela_muda` | Categoria = Muda | — |
 | Janela plantio | `sem_dado_man_hipot` | MAN_HIPOT nulo | — |
 | Janela plantio | `janela_precoce` | MAN_HIPOT = Precoce | — |
@@ -259,3 +299,4 @@ flowchart TD
 | Janela plantio | `janela_tardia` | MAN_HIPOT = Tardia | — |
 | Janela plantio | `janela_a_definir` | MAN_HIPOT = A Definir | — |
 | Janela plantio | `janela_soca_reforma` | Cana Soca com perfil válido | — |
+| *(consolidado)* | `sem_necessidade_todos` | Todos os 4 processos sem ação necessária | — |
