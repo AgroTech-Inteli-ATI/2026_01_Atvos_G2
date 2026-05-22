@@ -19,11 +19,13 @@ MAX_IDADE_PLANTIO_ANOS     = 10
 # Estrutura: <raiz>/src/processing/limpeza.py
 # parents[0] = processing/, parents[1] = src/, parents[2] = <raiz>/
 BASE_DIR    = Path(__file__).resolve().parents[2]
+SOLO_PATH   = BASE_DIR / "DATA" / "Dados_analise_solo.csv"
 RAW_PATH    = BASE_DIR / "DATA" / "Inventario_atvos.xlsx"
 OUTPUT_PATH = BASE_DIR / "DATA" / "inventario_silver.csv"
 
 # Mapeamento colunas Excel → nomes internos padronizados
 COLUNAS_RENAME = {
+    "NUM"          : "numero_fazenda",
     "TALHAO"       : "id_talhao",
     "UNID_IND"     : "unidade_industrial",
     "DATA_PLANTIO" : "data_plantio",
@@ -44,6 +46,7 @@ COLUNAS_RENAME = {
     "DE_TP_SOLO"   : "tipo_solo",
     "LATITUDE"     : "latitude",
     "LONGITUDE"    : "longitude",
+    "MAN_HIPOT"    : "man_hipot",
 }
 
 COLUNAS_CRITICAS = ["id_talhao", "unidade_industrial", "data_plantio"]
@@ -271,6 +274,15 @@ def tratar_tch_prod(df: pd.DataFrame, report: QualityReport) -> pd.DataFrame:
                                          n=int(ainda_nulos.sum()))
     return df
 
+def carregar_solo(path: Path) -> pd.DataFrame:
+    df_solo = pd.read_csv(path, sep=";")
+    df_solo["dt_analise1"] = pd.to_datetime(df_solo["dt_analise1"], errors="coerce")
+    df_solo = df_solo.sort_values("dt_analise1", ascending=False)
+    df_solo = df_solo.drop_duplicates(subset=["cd_upnivel1"], keep="first")
+    df_solo = df_solo.rename(columns={"cd_upnivel1": "numero_fazenda"})
+    df_solo["numero_fazenda"] = df_solo["numero_fazenda"].astype(str)
+    logger.info(f"Solo carregado: {len(df_solo)} fazendas únicas")
+    return df_solo
 # ---------------------------------------------------------------------------
 # Pipeline principal
 # ---------------------------------------------------------------------------
@@ -315,11 +327,19 @@ def main(df_raw: pd.DataFrame | None = None):
             raise FileNotFoundError(f"Arquivo não encontrado: {RAW_PATH}")
 
     df_silver, report = limpar_inventario(df_raw)
+
+    # Join com análise de solo
+    if SOLO_PATH.exists():
+        df_solo = carregar_solo(SOLO_PATH)
+        df_silver["numero_fazenda"] = df_silver["numero_fazenda"].astype(str)
+        df_silver = df_silver.merge(df_solo, on="numero_fazenda", how="left")
+        logger.info(f"Join com solo concluído: {len(df_silver):,} linhas")
+    else:
+        logger.warning(f"Arquivo de solo não encontrado: {SOLO_PATH}")
+
     salvar_csv(df_silver, OUTPUT_PATH)
     report.imprimir()
     report.imprimir_nulos(df_silver, COLUNAS_CRITICAS)
     return df_silver, report
-
-
 if __name__ == "__main__":
     main()
