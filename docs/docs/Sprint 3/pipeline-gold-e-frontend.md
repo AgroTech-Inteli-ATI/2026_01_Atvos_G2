@@ -1,6 +1,6 @@
 ---
 title: "Pipeline Gold e Integração com o Frontend"
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 # Pipeline Gold e Integração com o Frontend — Sprint 3
