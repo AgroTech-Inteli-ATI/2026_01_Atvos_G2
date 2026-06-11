@@ -1,6 +1,6 @@
 ---
-sidebar_position: 1
-title: Visão Geral da Sprint 4
+sidebar_position: 5
+title: Sprint 4
 ---
 
 # Sprint 4 — Testes e Resiliência do Pipeline
