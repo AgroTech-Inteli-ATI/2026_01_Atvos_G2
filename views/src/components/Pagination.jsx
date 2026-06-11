@@ -4,7 +4,15 @@ export default function Pagination({ page, totalPages, totalItems, itemsPerPage,
   const from = (page - 1) * itemsPerPage + 1;
   const to   = Math.min(page * itemsPerPage, totalItems);
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  // Janela deslizante de 5 páginas centrada na página atual
+  const WINDOW = 5;
+  let start = Math.max(1, page - Math.floor(WINDOW / 2));
+  let end   = start + WINDOW - 1;
+  if (end > totalPages) {
+    end   = totalPages;
+    start = Math.max(1, end - WINDOW + 1);
+  }
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
