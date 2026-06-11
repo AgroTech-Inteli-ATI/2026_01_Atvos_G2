@@ -5,7 +5,7 @@ import FilterBar from "../components/FilterBar";
 import ResultadosTable from "../components/ResultadosTable";
 import Pagination from "../components/Pagination";
 
-const EMPTY_FILTERS = { unidade: "", processo: "" };
+const EMPTY_FILTERS = { unidade: "", processo: "", insumo: "" };
 
 export default function Resultados() {
   const [pendingFilters, setPendingFilters] = useState(EMPTY_FILTERS);
@@ -17,6 +17,7 @@ export default function Resultados() {
     return RESULTADOS.filter((row) => {
       if (appliedFilters.unidade  && row.unidade  !== appliedFilters.unidade)  return false;
       if (appliedFilters.processo && row.processo !== appliedFilters.processo) return false;
+      if (appliedFilters.insumo   && row.insumo   !== appliedFilters.insumo)   return false;
       return true;
     });
   }, [appliedFilters]);
@@ -44,9 +45,9 @@ export default function Resultados() {
   }
 
   function handleExportCSV() {
-    const headers = ["ID_TALHAO", "UNIDADE", "PROCESSO", "ORIENTAÇÃO", "VALOR CALC.", "REGRA ACIONADA", "DATA"];
+    const headers = ["ID_TALHAO", "UNIDADE", "PROCESSO", "ORIENTAÇÃO", "INSUMO", "DOSE KG/HA", "REGRA ACIONADA", "DATA"];
     const rows = filtered.map((r) =>
-      [r.id, r.unidade, r.processo, r.orientacao, r.dose, r.regra, r.data].join(";")
+      [r.id, r.unidade, r.processo, r.orientacao, r.insumo, r.dose, r.regra, r.data].join(";")
     );
     const csv = [headers.join(";"), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

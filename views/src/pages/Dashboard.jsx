@@ -4,23 +4,17 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 import { COLORS } from "../constants/theme";
-import { RESULTADOS, BAR_DATA, PIE_DATA, ALERT_CARDS } from "../constants/mockData";
+import { BAR_DATA, PIE_DATA, ALERT_CARDS } from "../constants/mockData";
 import AlertIcon from "../components/AlertIcon";
 import ImportModal from "../components/ImportModal";
 
 const PIE_COLORS = [COLORS.navy, COLORS.orange];
 
-const totalTalhoes   = new Set(RESULTADOS.map(r => r.id)).size;
-const totalAlertas   = RESULTADOS.filter(r => r.alert).length;
-const semDado        = RESULTADOS.filter(r => !r.dose || r.dose === '—').length;
-const pctSemDado     = ((semDado / RESULTADOS.length) * 100).toFixed(1).replace('.', ',');
-const totalProcessos = new Set(RESULTADOS.map(r => r.processo)).size;
-
 const METRICS = [
-  { label: "Total de Talhões",    value: totalTalhoes.toLocaleString('pt-BR'), icon: "🌾" },
-  { label: "Talhões em Alerta",   value: totalAlertas.toLocaleString('pt-BR'), icon: "⚠️" },
-  { label: "% com Dado Ausente",  value: `${pctSemDado}%`,                     icon: "📊" },
-  { label: "Processos Avaliados", value: String(totalProcessos),               icon: "📋" },
+  { label: "Total de Talhões",    value: "1.248", icon: "🌾" },
+  { label: "Talhões em Alerta",   value: "32",    icon: "⚠️" },
+  { label: "% com Dado Ausente",  value: "14,6%", icon: "📊" },
+  { label: "Processos Avaliados", value: "18",    icon: "📋" },
 ];
 
 export default function Dashboard() {
