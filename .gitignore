@@ -1,5 +1,5 @@
 # Data files
-data/
+DATA/
 
 # Environment variables
 .env
@@ -45,3 +45,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js
+**/node_modules/

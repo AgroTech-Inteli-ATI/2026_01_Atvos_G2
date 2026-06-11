@@ -3,13 +3,14 @@ import { COLORS } from "../constants/theme";
 import AlertIcon from "./AlertIcon";
 
 const COLUMNS = [
-  { key: "id",         label: "ID_TALHAO"      },
-  { key: "unidade",    label: "UNIDADE"         },
-  { key: "processo",   label: "PROCESSO"        },
-  { key: "orientacao", label: "ORIENTAÇÃO"      },
-  { key: "dose",       label: "VALOR CALC."     },
-  { key: "regra",      label: "REGRA ACIONADA"  },
-  { key: "data",       label: "DATA"            },
+  { key: "id",        label: "ID_TALHAO"      },
+  { key: "unidade",   label: "UNIDADE"         },
+  { key: "processo",  label: "PROCESSO"        },
+  { key: "orientacao",label: "ORIENTAÇÃO"      },
+  { key: "insumo",    label: "INSUMO"          },
+  { key: "dose",      label: "DOSE KG/HA"      },
+  { key: "regra",     label: "REGRA ACIONADA"  },
+  { key: "data",      label: "DATA"            },
 ];
 
 export default function ResultadosTable({ rows }) {
@@ -82,6 +83,7 @@ export default function ResultadosTable({ rows }) {
                   {row.orientacao}
                 </div>
               </td>
+              <td style={cell()}>{row.insumo}</td>
               <td style={cell()}>{row.dose}</td>
               <td style={cell()}>{row.regra}</td>
               <td style={cell({ color: COLORS.gray600 })}>{row.data}</td>

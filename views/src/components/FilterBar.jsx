@@ -1,9 +1,10 @@
 import { COLORS } from "../constants/theme";
-import { UNIDADES, PROCESSOS } from "../constants/mockData";
+import { UNIDADES, PROCESSOS, INSUMOS } from "../constants/mockData";
 
 const FILTERS = [
   { key: "unidade",  label: "Unidade Industrial",  options: UNIDADES  },
-  { key: "processo", label: "Processo Agronômico", options: PROCESSOS },
+  { key: "processo", label: "Processo Agronômico",  options: PROCESSOS },
+  { key: "insumo",   label: "Tipo de Insumo",       options: INSUMOS   },
 ];
 
 export default function FilterBar({ filters, onChange, onSearch, onClear }) {
@@ -23,7 +24,7 @@ export default function FilterBar({ filters, onChange, onSearch, onClear }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr auto auto",
+          gridTemplateColumns: "1fr 1fr 1fr auto auto",
           gap: 12,
           alignItems: "flex-end",
         }}
