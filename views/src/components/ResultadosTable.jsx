@@ -3,18 +3,18 @@ import { COLORS } from "../constants/theme";
 import AlertIcon from "./AlertIcon";
 
 const COLUMNS = [
-  { key: "id",        label: "ID_TALHAO"      },
-  { key: "unidade",   label: "UNIDADE"         },
-  { key: "processo",  label: "PROCESSO"        },
-  { key: "orientacao",label: "ORIENTAÇÃO"      },
-  { key: "insumo",    label: "INSUMO"          },
-  { key: "dose",      label: "DOSE KG/HA"      },
-  { key: "regra",     label: "REGRA ACIONADA"  },
-  { key: "data",      label: "DATA"            },
+  { key: "id",         label: "ID_TALHAO"     },
+  { key: "unidade",    label: "UNIDADE"        },
+  { key: "processo",   label: "PROCESSO"       },
+  { key: "orientacao", label: "ORIENTAÇÃO"     },
+  { key: "insumo",     label: "INSUMO"         },
+  { key: "dose",       label: "DOSE KG/HA"     },
+  { key: "regra",      label: "REGRA ACIONADA" },
+  { key: "data",       label: "DATA"           },
 ];
 
 export default function ResultadosTable({ rows }) {
-  const [hoveredRow, setHoveredRow] = useState(null);
+  const [hoveredIdx, setHoveredIdx] = useState(null);
 
   if (rows.length === 0) {
     return (
@@ -39,12 +39,9 @@ export default function ResultadosTable({ rows }) {
             <th
               key={col.key}
               style={{
-                padding: "10px 12px",
-                textAlign: "left",
-                fontSize: 11,
-                fontWeight: 700,
-                color: COLORS.orange,
-                letterSpacing: ".06em",
+                padding: "10px 12px", textAlign: "left",
+                fontSize: 11, fontWeight: 700,
+                color: COLORS.orange, letterSpacing: ".06em",
               }}
             >
               {col.label}
@@ -54,7 +51,7 @@ export default function ResultadosTable({ rows }) {
       </thead>
       <tbody>
         {rows.map((row, i) => {
-          const isHovered = hoveredRow === row.id;
+          const isHovered = hoveredIdx === i;
           const bg = row.alert
             ? COLORS.rowHighlight
             : isHovered
@@ -65,9 +62,9 @@ export default function ResultadosTable({ rows }) {
 
           return (
             <tr
-              key={row.id}
-              onMouseEnter={() => setHoveredRow(row.id)}
-              onMouseLeave={() => setHoveredRow(null)}
+              key={`${row.id}_${row.processo}_${i}`}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
               style={{
                 background: bg,
                 borderBottom: `1px solid ${COLORS.gray100}`,
@@ -96,10 +93,5 @@ export default function ResultadosTable({ rows }) {
 }
 
 function cell(extra = {}) {
-  return {
-    padding: "11px 12px",
-    fontSize: 13,
-    color: COLORS.gray800,
-    ...extra,
-  };
+  return { padding: "11px 12px", fontSize: 13, color: COLORS.gray800, ...extra };
 }
