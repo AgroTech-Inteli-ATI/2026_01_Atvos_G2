@@ -1,26 +1,41 @@
 import { useState, useMemo } from "react";
 import { COLORS } from "../constants/theme";
-import { RESULTADOS, ITEMS_PER_PAGE } from "../constants/mockData";
+import { ITEMS_PER_PAGE } from "../constants/mockData";
 import FilterBar from "../components/FilterBar";
 import ResultadosTable from "../components/ResultadosTable";
 import Pagination from "../components/Pagination";
+import { usePipeline } from "../context/PipelineContext";
 
 const EMPTY_FILTERS = { unidade: "", processo: "", insumo: "" };
 
 export default function Resultados() {
+  const { resultados } = usePipeline();
   const [pendingFilters, setPendingFilters] = useState(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
 
-  // Só aplica filtros ao clicar em "Buscar"
+  // Opções de filtro derivadas dos dados reais
+  const unidades  = useMemo(
+    () => [...new Set(resultados.map((r) => r.unidade).filter((v) => v && v !== "-"))].sort(),
+    [resultados],
+  );
+  const processos = useMemo(
+    () => [...new Set(resultados.map((r) => r.processo))].sort(),
+    [resultados],
+  );
+  const insumos   = useMemo(
+    () => [...new Set(resultados.map((r) => r.insumo).filter((v) => v && v !== "-"))].sort(),
+    [resultados],
+  );
+
   const filtered = useMemo(() => {
-    return RESULTADOS.filter((row) => {
+    return resultados.filter((row) => {
       if (appliedFilters.unidade  && row.unidade  !== appliedFilters.unidade)  return false;
       if (appliedFilters.processo && row.processo !== appliedFilters.processo) return false;
       if (appliedFilters.insumo   && row.insumo   !== appliedFilters.insumo)   return false;
       return true;
     });
-  }, [appliedFilters]);
+  }, [resultados, appliedFilters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const pageRows   = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -63,35 +78,28 @@ export default function Resultados() {
     <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
       <FilterBar
         filters={pendingFilters}
+        unidades={unidades}
+        processos={processos}
+        insumos={insumos}
         onChange={handleFilterChange}
         onSearch={handleSearch}
         onClear={handleClear}
       />
 
-      <div
-        style={{
-          background: COLORS.white,
-          borderRadius: 12,
-          boxShadow: "0 1px 4px rgba(0,0,0,.07)",
-          padding: "20px 24px",
-        }}
-      >
-        {/* Export button */}
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 12,
+        boxShadow: "0 1px 4px rgba(0,0,0,.07)",
+        padding: "20px 24px",
+      }}>
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
           <button
             onClick={handleExportCSV}
             style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              background: COLORS.navy,
-              color: COLORS.white,
-              border: "none",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              padding: "8px 16px", borderRadius: 8,
+              background: COLORS.navy, color: COLORS.white,
+              border: "none", fontWeight: 700, fontSize: 13,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">

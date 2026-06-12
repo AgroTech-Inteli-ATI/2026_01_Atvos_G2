@@ -46,8 +46,10 @@ env/
 .DS_Store
 Thumbs.db
 
-# Node.js
-**/node_modules/
-
 # Vite 
 .vite/
+**/node_modules
+*/node_modules
+**/node_modules/*
+*/node_modules/*
+views/node_modules

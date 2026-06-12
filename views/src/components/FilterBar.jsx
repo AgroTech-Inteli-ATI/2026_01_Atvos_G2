@@ -1,13 +1,20 @@
 import { COLORS } from "../constants/theme";
-import { UNIDADES, PROCESSOS, INSUMOS } from "../constants/mockData";
 
-const FILTERS = [
-  { key: "unidade",  label: "Unidade Industrial",  options: UNIDADES  },
-  { key: "processo", label: "Processo Agronômico",  options: PROCESSOS },
-  { key: "insumo",   label: "Tipo de Insumo",       options: INSUMOS   },
-];
+export default function FilterBar({
+  filters,
+  unidades  = [],
+  processos = [],
+  insumos   = [],
+  onChange,
+  onSearch,
+  onClear,
+}) {
+  const FILTERS = [
+    { key: "unidade",  label: "Unidade Industrial",  options: unidades  },
+    { key: "processo", label: "Processo Agronômico",  options: processos },
+    { key: "insumo",   label: "Tipo de Insumo",       options: insumos   },
+  ];
 
-export default function FilterBar({ filters, onChange, onSearch, onClear }) {
   return (
     <div
       style={{
@@ -33,7 +40,10 @@ export default function FilterBar({ filters, onChange, onSearch, onClear }) {
           <div key={key}>
             <label
               htmlFor={`filter-${key}`}
-              style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.85)", marginBottom: 6 }}
+              style={{
+                display: "block", fontSize: 12, fontWeight: 600,
+                color: "rgba(255,255,255,.85)", marginBottom: 6,
+              }}
             >
               {label}
             </label>
@@ -42,15 +52,11 @@ export default function FilterBar({ filters, onChange, onSearch, onClear }) {
               value={filters[key]}
               onChange={(e) => onChange(key, e.target.value)}
               style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: 8,
-                border: "none",
+                width: "100%", padding: "10px 14px",
+                borderRadius: 8, border: "none",
                 background: COLORS.white,
                 color: filters[key] ? COLORS.gray800 : COLORS.gray600,
-                fontSize: 13,
-                cursor: "pointer",
-                outline: "none",
+                fontSize: 13, cursor: "pointer", outline: "none",
               }}
             >
               <option value="">Selecione</option>
@@ -61,10 +67,7 @@ export default function FilterBar({ filters, onChange, onSearch, onClear }) {
           </div>
         ))}
 
-        <button
-          onClick={onClear}
-          style={actionBtn()}
-        >
+        <button onClick={onClear} style={actionBtn()}>
           Limpar
         </button>
 
@@ -85,16 +88,10 @@ export default function FilterBar({ filters, onChange, onSearch, onClear }) {
 
 function actionBtn() {
   return {
-    padding: "10px 20px",
-    borderRadius: 8,
-    background: COLORS.navy,
-    color: COLORS.white,
-    border: "none",
-    fontWeight: 700,
-    fontSize: 13,
-    cursor: "pointer",
-    height: 40,
-    alignSelf: "flex-end",
+    padding: "10px 20px", borderRadius: 8,
+    background: COLORS.navy, color: COLORS.white,
+    border: "none", fontWeight: 700, fontSize: 13,
+    cursor: "pointer", height: 40, alignSelf: "flex-end",
     whiteSpace: "nowrap",
   };
 }
