@@ -2,11 +2,18 @@ import { useRef, useState } from "react";
 import { COLORS } from "../constants/theme";
 import { usePipeline } from "../context/PipelineContext";
 
+const CAMADAS = [
+  { value: "raw",    label: "Raw",    desc: "Planilha bruta (export ATVOS .xlsx)" },
+  { value: "bronze", label: "Bronze", desc: "Colunas padronizadas (sem limpeza)" },
+  { value: "silver", label: "Silver", desc: "Base limpa (pronta para regras)" },
+];
+
 export default function ImportModal({ onClose, onSuccess }) {
   const { runPipeline, isLoading } = usePipeline();
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
   const [listName, setListName] = useState("");
+  const [camada, setCamada] = useState("raw");
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
 
@@ -29,7 +36,7 @@ export default function ImportModal({ onClose, onSuccess }) {
 
   async function handleConfirm() {
     if (!file || !listName.trim() || isLoading) return;
-    const result = await runPipeline(file, listName.trim());
+    const result = await runPipeline(file, listName.trim(), camada);
     if (result.success) {
       onSuccess?.();
       onClose();
@@ -146,9 +153,49 @@ export default function ImportModal({ onClose, onSuccess }) {
               width: "100%", padding: "11px 14px",
               borderRadius: 8, border: `1px solid ${COLORS.gray200}`,
               fontSize: 14, color: COLORS.gray800, outline: "none",
-              boxSizing: "border-box", marginBottom: error ? 12 : 24,
+              boxSizing: "border-box", marginBottom: 20,
             }}
           />
+
+          {/* Ponto de partida da pipeline */}
+          <label
+            style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.gray800, marginBottom: 6 }}
+          >
+            Ponto de partida da pipeline
+          </label>
+          <div
+            role="radiogroup"
+            aria-label="Ponto de partida da pipeline"
+            style={{ display: "flex", gap: 8, marginBottom: 8 }}
+          >
+            {CAMADAS.map((c) => {
+              const selected = camada === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={isLoading}
+                  onClick={() => setCamada(c.value)}
+                  style={{
+                    flex: 1, padding: "9px 10px", borderRadius: 8,
+                    border: `1.5px solid ${selected ? COLORS.orange : COLORS.gray200}`,
+                    background: selected ? COLORS.orangePale : COLORS.white,
+                    color: selected ? COLORS.orange : COLORS.gray600,
+                    fontWeight: 700, fontSize: 13,
+                    cursor: isLoading ? "not-allowed" : "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 12, color: COLORS.gray400, margin: "0 0 24px" }}>
+            {CAMADAS.find((c) => c.value === camada)?.desc}
+          </p>
 
           {/* Erro */}
           {error && (

@@ -78,18 +78,29 @@ Abra **http://localhost:5173** no navegador.
 2. Clique em **Importar Lista** (botão laranja)
 3. Arraste ou selecione um arquivo `.csv` ou `.xlsx`
 4. Digite um nome para a importação (ex: `Análise Solo — Junho 2026`)
-5. Clique em **Confirmar Importação**
+5. Escolha o **ponto de partida da pipeline** conforme o estado da sua planilha (Raw / Bronze / Silver)
+6. Clique em **Confirmar Importação**
 
-A API processa o arquivo, executa o pipeline Silver → Gold e atualiza automaticamente todas as abas com os resultados reais.
+A API processa o arquivo a partir da camada escolhida, roda a pipeline **até o Gold** e atualiza automaticamente todas as abas com os resultados reais.
+
+### Ponto de partida da pipeline
+
+A pipeline segue o padrão medallion `raw → bronze → silver → gold` e **sempre roda até o Gold**. O que muda é a camada de entrada, escolhida no modal de importação conforme o estado do dado em mãos:
+
+| Ponto de partida | O que espera | Etapas executadas |
+|---|---|---|
+| **Raw** | Planilha bruta exportada do ATVOS (colunas `TALHAO`, `UNID_IND`, etc.) | Bronze → Silver → Gold |
+| **Bronze** | Colunas já padronizadas (com `id_talhao`), sem limpeza de qualidade | Silver → Gold |
+| **Silver** | Base já limpa e pronta para as regras (com `id_talhao`) | Gold |
+
+Cada camada gera seu próprio arquivo intermediário (`inventario_bronze.csv`, `inventario_silver.csv`, `inventario_gold.csv`), permitindo que qualquer uma seja ponto de entrada independente.
 
 ### Formatos de arquivo aceitos
 
 | Formato | Descrição |
 |---|---|
-| `.xlsx` | Arquivo bruto exportado do sistema ATVOS (colunas `TALHAO`, `UNID_IND`, etc.) |
-| `.csv` | CSV no formato silver (já com coluna `id_talhao`) ou exportação CSV do Excel bruto |
-
-O sistema detecta automaticamente o formato e aplica ou não a etapa de limpeza (silver pipeline).
+| `.xlsx` | Arquivo bruto exportado do sistema ATVOS — use com o ponto de partida **Raw** |
+| `.csv` | CSV nos formatos bronze/silver (já com coluna `id_talhao`) ou exportação CSV do Excel bruto |
 
 ---
 
@@ -100,16 +111,19 @@ O sistema detecta automaticamente o formato e aplica ou não a etapa de limpeza 
 ├── api/
 │   └── main.py              # FastAPI — POST /api/run, GET /api/historico
 ├── src/
-│   ├── processing/
-│   │   └── limpeza.py       # Pipeline Silver (limpeza e join com análise de solo)
-│   ├── rules/
-│   │   ├── calagem.py
-│   │   ├── gessagem.py
-│   │   ├── fosfatagem.py
-│   │   ├── erradicacao.py
-│   │   ├── insumos.py
-│   │   └── janela_plantio.py
-│   └── pipeline_gold.py     # Pipeline Gold (aplica todas as regras)
+│   ├── pipelines/           # Pipelines em POO — uma classe por camada
+│   │   ├── bronze_pipeline.py   # BronzePipeline — padronização estrutural
+│   │   ├── silver_pipeline.py   # SilverPipeline — qualidade + join com solo
+│   │   ├── gold_pipeline.py     # GoldPipeline — aplica as regras agronômicas
+│   │   ├── pipeline.py          # Pipeline — orquestra da camada inicial até o Gold
+│   │   └── io_utils.py          # leitura/gravação de CSV compartilhada
+│   └── rules/               # Regras agronômicas (funções puras)
+│       ├── calagem.py
+│       ├── gessagem.py
+│       ├── fosfatagem.py
+│       ├── erradicacao.py
+│       ├── insumos.py
+│       └── janela_plantio.py
 ├── tests/                   # Suite pytest
 ├── views/                   # Frontend React + Vite
 │   └── src/
@@ -131,6 +145,40 @@ O sistema detecta automaticamente o formato e aplica ou não a etapa de limpeza 
 ```bash
 pytest tests/ -v
 ```
+
+---
+
+## Rodando a documentação
+
+A documentação é um site [Docusaurus](https://docusaurus.io/) que fica na pasta `docs/`.
+
+### 1. Instalar as dependências (apenas na primeira vez)
+
+```bash
+cd docs
+npm install
+cd ..
+```
+
+### 2. Rodar em modo de desenvolvimento (hot-reload)
+
+```bash
+cd docs
+npm start
+```
+
+Abre automaticamente em **http://localhost:3000**. As páginas ficam em `docs/docs/`
+(uma pasta por Sprint) e recarregam ao salvar.
+
+### 3. Gerar o build de produção (opcional)
+
+```bash
+cd docs
+npm run build      # gera os arquivos estáticos em docs/build/
+npm run serve      # serve o build localmente para conferência
+```
+
+> **Pré-requisito:** Node.js 18+ e npm 9+ (os mesmos do frontend).
 
 ---
 
