@@ -25,8 +25,10 @@ SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 DATA_DIR = Path(__file__).resolve().parent.parent / "DATA"
 sys.path.insert(0, str(SRC_DIR))
 
-from processing.limpeza import carregar_solo, limpar_inventario, SOLO_PATH
-from pipeline_gold import processar_pipeline_gold
+from pipelines import CAMADAS_INICIAIS, Pipeline
+
+# Instância única reutilizada entre as requisições
+PIPELINE = Pipeline()
 
 HISTORY_FILE = Path(__file__).parent / "historico.json"
 TEMP_DIR = Path(__file__).parent / "temp"
@@ -171,14 +173,19 @@ def _save_history(history: list) -> None:
 async def run_pipeline(
     file: UploadFile = File(...),
     nome: str = Form(...),
+    camada_inicial: str = Form("raw"),
 ):
     ext = Path(file.filename or "").suffix.lower()
     if ext not in (".csv", ".xlsx", ".xls"):
         raise HTTPException(400, detail=f"Formato não suportado: '{ext}'. Use .csv ou .xlsx")
 
+    if camada_inicial not in CAMADAS_INICIAIS:
+        raise HTTPException(
+            400,
+            detail=f"Camada inicial inválida: '{camada_inicial}'. Use uma de {list(CAMADAS_INICIAIS)}.",
+        )
+
     run_id = uuid.uuid4().hex[:8]
-    silver_path = TEMP_DIR / f"silver_{run_id}.csv"
-    gold_path   = TEMP_DIR / f"gold_{run_id}.csv"
 
     try:
         contents = await file.read()
@@ -197,20 +204,22 @@ async def run_pipeline(
             if df_raw is None:
                 raise HTTPException(400, detail="Não foi possível decodificar o CSV. Use UTF-8 ou Latin-1.")
 
-        # 2. Pipeline Silver
-        if "id_talhao" in df_raw.columns:
-            df_silver = df_raw  # Arquivo já está no formato silver
-        else:
-            df_silver, _ = limpar_inventario(df_raw)
-            if SOLO_PATH.exists():
-                df_solo = carregar_solo(SOLO_PATH)
-                df_silver["numero_fazenda"] = df_silver["numero_fazenda"].astype(str)
-                df_silver = df_silver.merge(df_solo, on="numero_fazenda", how="left")
+        # 2. Validação do formato esperado para a camada de entrada escolhida
+        if camada_inicial == "raw":
+            if "TALHAO" not in df_raw.columns:
+                raise HTTPException(
+                    422,
+                    detail="O modo 'raw' espera a planilha bruta do ATVOS (coluna 'TALHAO' ausente).",
+                )
+        else:  # bronze / silver — já devem estar com colunas padronizadas
+            if "id_talhao" not in df_raw.columns:
+                raise HTTPException(
+                    422,
+                    detail=f"O modo '{camada_inicial}' espera uma base já padronizada (coluna 'id_talhao' ausente).",
+                )
 
-        df_silver.to_csv(silver_path, index=False)
-
-        # 3. Pipeline Gold
-        df_gold = processar_pipeline_gold(str(silver_path), str(gold_path))
+        # 3. Executa a pipeline a partir da camada escolhida até o Gold
+        df_silver, df_gold, _ = PIPELINE.executar(df_raw, camada_inicial, TEMP_DIR, run_id)
 
         if df_gold.empty:
             raise HTTPException(422, detail="Nenhum talhão válido encontrado no arquivo.")
@@ -236,10 +245,11 @@ async def run_pipeline(
         # 6. Histórico
         processos_usados = sorted({r["processo"] for r in resultados})
         entry = {
-            "data":      datetime.now().strftime("%d/%m/%Y"),
-            "nome":      nome,
-            "talhoes":   int(len(df_gold)),
-            "processos": processos_usados,
+            "data":           datetime.now().strftime("%d/%m/%Y"),
+            "nome":           nome,
+            "talhoes":        int(len(df_gold)),
+            "processos":      processos_usados,
+            "camada_inicial": camada_inicial,
         }
         history = _load_history()
         history.insert(0, entry)
@@ -260,12 +270,12 @@ async def run_pipeline(
         raise HTTPException(500, detail=str(exc))
 
     finally:
-        for p in (silver_path, gold_path):
-            if p.exists():
-                try:
-                    p.unlink()
-                except OSError:
-                    pass
+        # Limpa os CSVs intermediários desta execução (bronze/silver/gold)
+        for p in TEMP_DIR.glob(f"*_{run_id}.csv"):
+            try:
+                p.unlink()
+            except OSError:
+                pass
 
 
 @app.get("/api/historico")

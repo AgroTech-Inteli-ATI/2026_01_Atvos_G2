@@ -37,12 +37,13 @@ export function PipelineProvider({ children }) {
       .catch(() => {});
   }, []);
 
-  const runPipeline = useCallback(async (file, nome) => {
+  const runPipeline = useCallback(async (file, nome, camadaInicial = "raw") => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const form = new FormData();
       form.append("file", file);
       form.append("nome", nome);
+      form.append("camada_inicial", camadaInicial);
 
       const res = await fetch("/api/run", { method: "POST", body: form });
       if (!res.ok) {
