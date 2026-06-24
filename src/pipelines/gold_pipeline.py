@@ -54,9 +54,12 @@ class GoldPipeline:
     def _area_ha(talhao: dict) -> float | None:
         v = talhao.get("area_ha")
         try:
-            return float(v) if v is not None else None
+            area = float(v) if v is not None else None
         except (ValueError, TypeError):
             return None
+        if area is None or not math.isfinite(area) or area <= 0:
+            return None
+        return area
 
     # — Cálculo de insumos --------------------------------------------------
 
