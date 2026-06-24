@@ -1,6 +1,6 @@
 ---
-sidebar_position: 1
-title: Visão Geral da Sprint 5
+sidebar_position: 6
+title: Sprint 5
 ---
 
 # Sprint 5 — Modularização da Pipeline
