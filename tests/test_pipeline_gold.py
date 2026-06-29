@@ -5,8 +5,10 @@ Cobre: dados inválidos, id ausente, tipos errados, colunas faltando.
 import pandas as pd
 import pytest
 
-import pipeline_gold
-from pipeline_gold import processar_talhao
+from pipelines import GoldPipeline
+
+gold = GoldPipeline()
+processar_talhao = gold.processar_talhao
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +59,7 @@ def test_pipeline_processa_dataframe_valido(tmp_path):
     }])
     df.to_csv(csv_entrada, index=False)
 
-    output = pipeline_gold.processar_pipeline_gold(str(csv_entrada), str(csv_saida))
+    output = gold.executar(str(csv_entrada), str(csv_saida))
 
     assert len(output) == 1
     assert output.iloc[0]["id_talhao"] == "T001"
@@ -75,7 +77,7 @@ def test_pipeline_gold_contem_colunas_insumos_pivotadas(tmp_path):
     }])
     df.to_csv(csv_entrada, index=False)
 
-    output = pipeline_gold.processar_pipeline_gold(
+    output = gold.executar(
         str(csv_entrada), str(tmp_path / "gold.csv")
     )
 
@@ -97,7 +99,7 @@ def test_pipeline_fosfato_calcula_quantidade_total(tmp_path):
     }])
     df.to_csv(csv_entrada, index=False)
 
-    output = pipeline_gold.processar_pipeline_gold(
+    output = gold.executar(
         str(csv_entrada), str(tmp_path / "gold.csv")
     )
     row = output.iloc[0]
@@ -117,14 +119,14 @@ def test_pipeline_pula_registros_sem_id_e_continua(tmp_path):
     ])
     df.to_csv(csv_entrada, index=False)
 
-    output = pipeline_gold.processar_pipeline_gold(str(csv_entrada), str(csv_saida))
+    output = gold.executar(str(csv_entrada), str(csv_saida))
     assert len(output) == 1
     assert output.iloc[0]["id_talhao"] == "T002"
 
 
 def test_pipeline_arquivo_nao_encontrado_levanta_file_not_found(tmp_path):
     with pytest.raises(FileNotFoundError):
-        pipeline_gold.processar_pipeline_gold(
+        gold.executar(
             str(tmp_path / "inexistente.csv"),
             str(tmp_path / "gold.csv"),
         )

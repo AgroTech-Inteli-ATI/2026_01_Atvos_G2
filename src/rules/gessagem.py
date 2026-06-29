@@ -35,17 +35,11 @@ def calcular_necessidade_gessagem(talhao: dict) -> dict:
     gatilho_ca = ca_sub < CA_MINIMO
     gatilho_al = sat_al > SAT_AL_MAXIMO
 
-    if gatilho_ca or gatilho_al:
+    if gatilho_ca and gatilho_al:
         argila_g_kg = TABELA_ARGILA.get(tipo_solo, TABELA_ARGILA["A Definir"])
         dose_gesso = float(argila_g_kg * 5)
         momento = "na etapa da grade niveladora, antes do plantio"
-
-        if gatilho_ca and gatilho_al:
-            regra = "gessagem_ca_baixo_e_al_alto"
-        elif gatilho_ca:
-            regra = "gessagem_ca_subsuperficial_baixo"
-        else:
-            regra = "gessagem_saturacao_al_alta"
+        regra = "gessagem_ca_baixo_e_al_alto"
 
         orientacao = (
             f"Aplicar {dose_gesso:.0f} kg/ha de gesso agrícola. "

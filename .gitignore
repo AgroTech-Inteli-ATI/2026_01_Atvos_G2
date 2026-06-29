@@ -11,6 +11,7 @@ DATA/
 
 # Python
 __pycache__/
+.pytest_tmp/
 *.py[cod]
 *.pyo
 *.pyd
@@ -46,8 +47,8 @@ env/
 .DS_Store
 Thumbs.db
 
-# Node.js
-**/node_modules/
+# Vite 
+.vite/
 **/node_modules
 */node_modules
 **/node_modules/*

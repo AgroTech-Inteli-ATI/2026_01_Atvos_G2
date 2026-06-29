@@ -1,6 +1,6 @@
 ---
-sidebar_position: 1
-title: Visão Geral da Sprint 3
+sidebar_position: 4
+title: Sprint 3
 ---
 
 # Sprint 3 — Módulo de Insumos e Doses
