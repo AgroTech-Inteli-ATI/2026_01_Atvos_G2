@@ -46,6 +46,7 @@ COLUNAS_RENAME = {
     "DE_TP_SOLO"   : "tipo_solo",
     "LATITUDE"     : "latitude",
     "LONGITUDE"    : "longitude",
+    "MAN_HIPOT"    : "man_hipot",
 }
 
 COLUNAS_CRITICAS = ["id_talhao", "unidade_industrial", "data_plantio"]

@@ -1,5 +1,25 @@
 # 2026_01_Atvos_G2
 
+## Como executar a pipeline
+
+Com o ambiente configurado e os arquivos de dados na pasta `DATA/`, rode:
+
+```bash
+python src/pipeline_gold.py
+```
+
+Isso executa as duas fases em sequência:
+1. **Silver** — limpeza do inventário e join com análise de solo
+2. **Gold** — motor de regras agronômicas (calagem, gessagem, fosfatagem, erradicação)
+
+Os arquivos de saída são gerados em `DATA/gold/orientacoes_YYYY-MM-DD.[parquet|csv]`.
+
+**Arquivos necessários em `DATA/`:**
+- `Inventario_atvos.xlsx`
+- `Dados_analise_solo.csv`
+
+---
+
 ## Caminho 1 - Sistemas Unix → Configuração do ambiente
 
 1. Configure o ambiente:
@@ -12,7 +32,7 @@
    cp .env.example .env
    ```
 
-3. Coloque os arquivos CSV na pasta `data/`.
+3. Coloque os arquivos de dados na pasta `DATA/`.
 
 
 ## Caminho 2 — Sistemas Windows → Configuração do ambiente
