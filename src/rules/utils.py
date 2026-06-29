@@ -4,10 +4,16 @@ def campo_invalido(valor):
     if valor is None:
         return True
 
-    if isinstance(valor, float) and math.isnan(valor):
+    if isinstance(valor, bool):
         return True
 
     if not isinstance(valor, (int, float)):
+        return True
+
+    if not math.isfinite(float(valor)):
+        return True
+
+    if valor < 0:
         return True
 
     return False
